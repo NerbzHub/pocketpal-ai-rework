@@ -45,6 +45,8 @@ import {
 } from '../utils/chat';
 import {acquireKeepAwake} from '../utils/keepAwake';
 import {vtrace} from '../utils/voiceTrace';
+import {searchLocalLibrary} from '../services/kiwix/search';
+import {wrapUntrusted} from '../services/talents/untrustedContent';
 import {LLAMARN_ERROR_PATTERNS} from '../utils/llamaRnErrors';
 import {
   toApiCompletionParams,
@@ -816,9 +818,44 @@ export const useChatSession = (
       model: modelStore.activeModel,
     });
 
+    // Explicit command: retrieval does not depend on a model supporting tool calls.
+    // Keep library excerpts on-device and fail closed if the server is unavailable.
+    let completionMessage = message;
+    if (/^\/library(?:\s|$)/i.test(message.text)) {
+      const query = message.text.replace(/^\/library\s*/i, '').trim();
+      if (modelStore.activeModel?.origin === ModelOrigin.REMOTE) {
+        await addSystemMessage('Library search requires an on-device model.');
+        return;
+      }
+      try {
+        const hits = await searchLocalLibrary(query, lease.signal);
+        if (lease.signal.aborted) { return; }
+        if (!hits.length) {
+          await addSystemMessage('No matching library excerpts were found. Try shorter keywords.');
+          return;
+        }
+        const sources = hits.map((hit, index) =>
+          `[${index + 1}] ${hit.title}\n${hit.url}\n${hit.snippet}`,
+        ).join('\n\n');
+        await addSystemMessage(`Offline library sources:\n${hits.map((hit, index) =>
+          `[${index + 1}] ${hit.title}: ${hit.url}`,
+        ).join('\n')}`);
+        completionMessage = {
+          ...message,
+          text: `Answer the question using only these retrieved excerpts. Cite source numbers. If they are insufficient, say so.\n\n${wrapUntrusted(sources)}\n\nQuestion: ${query}`,
+        };
+      } catch (error) {
+        if (!lease.signal.aborted) {
+          const detail = error instanceof Error ? error.message : String(error);
+          await addSystemMessage(`Offline library search failed: ${detail} Make sure Knowledge to Go is running.`);
+        }
+        return;
+      }
+    }
+
     const {cleanCompletionParams, messageInfo} = await prepareCompletion({
       imageUris: imageUris || [],
-      message,
+      message: completionMessage,
       systemMessages,
       contextId,
       assistant,
