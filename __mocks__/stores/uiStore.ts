@@ -14,6 +14,8 @@ const setColorScheme = (value: 'light' | 'dark') =>
   runInAction(() => colorScheme.set(value));
 
 export const mockUiStore = {
+  localDbEnabled: false,
+  setLocalDbEnabled: jest.fn(),
   get colorScheme() {
     return colorScheme.get();
   },

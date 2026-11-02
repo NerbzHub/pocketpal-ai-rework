@@ -48,6 +48,13 @@ export class UIStore {
 
   displayMemUsage = false;
 
+  // Explicit opt-in for grounding chat turns in the on-device Kiwix library.
+  localDbEnabled = false;
+
+  setLocalDbEnabled(enabled: boolean) {
+    this.localDbEnabled = enabled;
+  }
+
   iOSBackgroundDownloading = true;
 
   benchmarkShareDialog = {
@@ -117,6 +124,7 @@ export class UIStore {
         'colorScheme',
         'autoNavigatetoChat',
         'displayMemUsage',
+        'localDbEnabled',
         'benchmarkShareDialog',
         '_language',
         'toolCompatWarnedModels',

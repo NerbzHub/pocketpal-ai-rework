@@ -44,6 +44,7 @@ beforeEach(() => {
 
   // Reset mock stores to a known baseline between tests
   palStore.pals = [] as any;
+  uiStore.localDbEnabled = false;
   chatSessionStore.sessions = sessionFixtures as any;
   chatSessionStore.activeSessionId = 'session-1';
 
@@ -76,9 +77,13 @@ describe('useChatSession', () => {
   });
 
   it('includes offline library context when preparing an on-device chat', async () => {
-    const lookup = jest
-      .spyOn(kiwix, 'kiwixContext')
-      .mockResolvedValueOnce('Offline article: koalas eat eucalyptus.');
+    uiStore.localDbEnabled = true;
+    const lookup = jest.spyOn(kiwix, 'kiwixContext').mockResolvedValueOnce({
+      title: 'Koala',
+      url: 'http://127.0.0.1:8085/kiwix/content/wiki/Koala',
+      excerpt: 'Koalas eat eucalyptus.',
+      context: 'Offline article: koalas eat eucalyptus.',
+    });
     let messages: any[] = [];
     modelStore.setActiveModel(mockBasicModel.id);
     modelStore.context!.completion = jest.fn().mockImplementation(params => {
@@ -97,8 +102,85 @@ describe('useChatSession', () => {
     expect(
       messages.find(message => message.role === 'system')?.content,
     ).toContain('Offline article: koalas eat eucalyptus.');
+    expect(chatSessionStore.addMessageToSession).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({
+        text: expect.stringContaining('Koalas eat eucalyptus.'),
+      }),
+    );
     lookup.mockRestore();
   });
+
+  it('does not search the local database when the toggle is off', async () => {
+    const lookup = jest.spyOn(kiwix, 'kiwixContext');
+    modelStore.setActiveModel(mockBasicModel.id);
+    const {result} = renderHook(() =>
+      useChatSession({current: null}, textMessage.author, mockAssistant),
+    );
+    await act(async () => {
+      await result.current.handleSendPress(textMessage);
+    });
+    expect(lookup).not.toHaveBeenCalled();
+    lookup.mockRestore();
+  });
+
+  it('does not send local library content to a remote model', async () => {
+    uiStore.localDbEnabled = true;
+    const remote = {
+      ...mockBasicModel,
+      id: 'remote-test',
+      origin: ModelOrigin.REMOTE,
+    };
+    modelStore.models = [remote];
+    modelStore.setActiveModel(remote.id);
+    const lookup = jest.spyOn(kiwix, 'kiwixContext');
+    const {result} = renderHook(() =>
+      useChatSession({current: null}, textMessage.author, mockAssistant),
+    );
+    await act(async () => {
+      await result.current.handleSendPress(textMessage);
+    });
+    expect(lookup).not.toHaveBeenCalled();
+    expect(modelStore.engine?.completion).not.toHaveBeenCalled();
+    expect(chatSessionStore.addMessageToSession).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({text: l10n.en.chat.localDbLocalOnly}),
+    );
+    lookup.mockRestore();
+  });
+
+  it.each([
+    ['no matching article', null, l10n.en.chat.localDbNoResults],
+    [
+      'unavailable server',
+      new Error('unreachable'),
+      l10n.en.chat.localDbUnavailable,
+    ],
+  ])(
+    'does not generate an unsupported answer for %s',
+    async (_label, outcome, expected) => {
+      uiStore.localDbEnabled = true;
+      modelStore.setActiveModel(mockBasicModel.id);
+      const lookup = jest.spyOn(kiwix, 'kiwixContext');
+      if (outcome instanceof Error) {
+        lookup.mockRejectedValueOnce(outcome);
+      } else {
+        lookup.mockResolvedValueOnce(null);
+      }
+      const {result} = renderHook(() =>
+        useChatSession({current: null}, textMessage.author, mockAssistant),
+      );
+      await act(async () => {
+        await result.current.handleSendPress(textMessage);
+      });
+      expect(modelStore.engine?.completion).not.toHaveBeenCalled();
+      expect(chatSessionStore.addMessageToSession).toHaveBeenCalledWith(
+        'session-1',
+        expect.objectContaining({text: expected}),
+      );
+      lookup.mockRestore();
+    },
+  );
 
   it('should send a message and update the chat session', async () => {
     const {result} = renderHook(() =>

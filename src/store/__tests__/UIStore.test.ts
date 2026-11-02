@@ -43,6 +43,14 @@ describe('UIStore', () => {
     expect(uiStore.displayMemUsage).toBe(true);
   });
 
+  it('stores whether Local DB is selected', () => {
+    expect(uiStore.localDbEnabled).toBe(false);
+    uiStore.setLocalDbEnabled(true);
+    expect(uiStore.localDbEnabled).toBe(true);
+    uiStore.setLocalDbEnabled(false);
+    expect(uiStore.localDbEnabled).toBe(false);
+  });
+
   it('should set page state value correctly', () => {
     uiStore.setValue('modelsScreen', 'filters', ['ungrouped']);
     expect(uiStore.pageStates.modelsScreen.filters).toEqual(['ungrouped']);

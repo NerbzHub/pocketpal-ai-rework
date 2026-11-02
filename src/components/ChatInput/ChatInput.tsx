@@ -691,6 +691,42 @@ export const ChatInput = observer(
                     </Text>
                   </TouchableOpacity>
                 )}
+
+                {!isCameraActive && !isVideoCapable && (
+                  <TouchableOpacity
+                    testID="local-db-toggle"
+                    style={[
+                      styles.thinkingToggleLeft,
+                      styles.localDbToggle,
+                      uiStore.localDbEnabled && {
+                        backgroundColor: onSurfaceColor,
+                      },
+                      {borderColor: onSurfaceColorVariant},
+                    ]}
+                    onPress={() =>
+                      uiStore.setLocalDbEnabled(!uiStore.localDbEnabled)
+                    }
+                    accessibilityLabel={
+                      uiStore.localDbEnabled
+                        ? l10n.components.chatInput.localDbToggle.disable
+                        : l10n.components.chatInput.localDbToggle.enable
+                    }
+                    accessibilityRole="button"
+                    accessibilityState={{checked: !!uiStore.localDbEnabled}}>
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.localDbToggleText,
+                        {
+                          color: uiStore.localDbEnabled
+                            ? inputBackgroundColor
+                            : onSurfaceColorVariant,
+                        },
+                      ]}>
+                      {l10n.components.chatInput.localDbToggle.label}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
               {/* Right Controls */}

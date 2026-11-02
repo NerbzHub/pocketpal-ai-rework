@@ -34,6 +34,7 @@ import {
   createMultimodalWarning,
 } from '../utils/errors';
 import {routerFailureMessage} from '../utils/routerCopy';
+import {t as translate} from '../locales';
 import {
   assembleMessages,
   resolveSystemMessages,
@@ -85,7 +86,7 @@ const prepareCompletion = async ({
   l10n,
   currentMessages,
   spoken,
-  signal,
+  offlineContext,
 }: {
   imageUris: string[];
   message: MessageType.PartialText;
@@ -97,7 +98,7 @@ const prepareCompletion = async ({
   l10n: any;
   currentMessages: MessageType.Any[];
   spoken: boolean;
-  signal: AbortSignal;
+  offlineContext?: string;
 }) => {
   const sessionCompletionSettings =
     await chatSessionStore.getCurrentCompletionSettings();
@@ -137,7 +138,9 @@ const prepareCompletion = async ({
   // message). AssistantTurn rows pass through to convertToChatMessages,
   // which expands each step into assistant + tool API messages.
   let chatMessages = convertToChatMessages(
-    currentMessages.filter(msg => msg.type !== 'image'),
+    currentMessages.filter(
+      msg => msg.type !== 'image' && !msg.metadata?.localDbSource,
+    ),
     isMultimodalEnabled,
   );
 
@@ -167,24 +170,8 @@ const prepareCompletion = async ({
     maxToolTurns: DEFAULT_MAX_TURNS,
   });
 
-  // Knowledge To Go is local to this device. Ground ordinary chats as well as
-  // tool-capable Pals, so smaller models can use the downloaded library too.
-  if (modelStore.activeModel?.origin !== ModelOrigin.REMOTE) {
-    try {
-      const offlineContext = await kiwixContext(message.text, signal);
-      if (offlineContext && !signal.aborted) {
-        systemPromptFragments.push(offlineContext);
-      }
-    } catch {
-      if (
-        !signal.aborted &&
-        /\b(?:kiwix|knowledge\s+to\s+go)\b/i.test(message.text)
-      ) {
-        systemPromptFragments.push(
-          'The offline Knowledge To Go library is unavailable for this turn. If asked to search it, say it could not be reached.',
-        );
-      }
-    }
+  if (offlineContext) {
+    systemPromptFragments.push(offlineContext);
   }
 
   const messages = assembleMessages(systemMessages, systemPromptFragments, [
@@ -713,6 +700,7 @@ export const useChatSession = (
     opts: SendOptions = {},
   ): Promise<UndoneSend | undefined> => {
     const sentFrom = chatSessionStore.activeSessionId;
+    const localDbEnabled = uiStore.localDbEnabled;
     const stopsAtSend = stopsBeforeLease.current;
     if (modelStore.isGenerationBusy) {
       chatSessionStore.setIsStopping(true);
@@ -757,7 +745,7 @@ export const useChatSession = (
     }
 
     try {
-      return await sendUnderLease(message, lease, opts, {
+      return await sendUnderLease(message, lease, opts, localDbEnabled, {
         stop: uiStop,
         isStopped: () => uiStopped,
         holdAwake: () => {
@@ -780,6 +768,7 @@ export const useChatSession = (
     message: MessageType.PartialText,
     lease: GenerationLease,
     opts: SendOptions,
+    localDbEnabled: boolean,
     runUi: {
       stop: () => void;
       isStopped: () => boolean;
@@ -820,6 +809,7 @@ export const useChatSession = (
         s => s.id === chatSessionStore.activeSessionId,
       )?.title ?? NEW_SESSION_TITLE) === NEW_SESSION_TITLE;
     await addMessage(textMessage);
+    const sourceSessionId = chatSessionStore.activeSessionId;
     if (!lease.signal.aborted) {
       modelStore.setInferencing(true);
       modelStore.setIsStreaming(false);
@@ -839,6 +829,51 @@ export const useChatSession = (
       model: modelStore.activeModel,
     });
 
+    let offlineContext: string | undefined;
+    if (localDbEnabled && !lease.signal.aborted) {
+      const addLocalDbMessage = async (text: string) => {
+        if (sourceSessionId) {
+          await chatSessionStore.addMessageToSession(
+            sourceSessionId,
+            systemRow(text, {localDbSource: true}),
+          );
+        }
+      };
+      if (modelStore.activeModel?.origin === ModelOrigin.REMOTE) {
+        await addLocalDbMessage(l10n.chat.localDbLocalOnly);
+        return;
+      }
+      try {
+        const result = await kiwixContext(message.text, lease.signal);
+        if (lease.signal.aborted) {
+          return;
+        }
+        if (!result) {
+          await addLocalDbMessage(l10n.chat.localDbNoResults);
+          return;
+        }
+        await addLocalDbMessage(
+          translate(l10n.chat.localDbSource, {
+            title: result.title,
+            excerpt: result.excerpt,
+            url: result.url,
+          }),
+        );
+        if (chatSessionStore.activeSessionId !== sourceSessionId) {
+          return;
+        }
+        offlineContext = result.context;
+      } catch {
+        if (!lease.signal.aborted) {
+          await addLocalDbMessage(l10n.chat.localDbUnavailable);
+        }
+        return;
+      }
+    }
+    if (lease.signal.aborted) {
+      return;
+    }
+
     const {cleanCompletionParams, messageInfo} = await prepareCompletion({
       imageUris: imageUris || [],
       message,
@@ -850,7 +885,7 @@ export const useChatSession = (
       l10n,
       currentMessages,
       spoken: !!opts.spoken,
-      signal: lease.signal,
+      offlineContext,
     });
 
     currentMessageInfo.current = messageInfo;

@@ -6,6 +6,7 @@ import React from 'react';
 import {render, fireEvent} from '@testing-library/react-native';
 import {ChatInput} from '../ChatInput';
 import {UserContext} from '../../../utils';
+import {chatSessionStore, palStore, uiStore} from '../../../store';
 
 // Mock the theme hook
 jest.mock('../../../hooks', () => ({
@@ -46,6 +47,8 @@ jest.mock('../../../store', () => ({
   },
   uiStore: {
     colorScheme: 'light',
+    localDbEnabled: false,
+    setLocalDbEnabled: jest.fn(),
   },
   asrStore: {
     captureState: 'idle',
@@ -102,6 +105,44 @@ describe('ChatInput Thinking Toggle', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    uiStore.localDbEnabled = false;
+    (chatSessionStore as any).activePalId = null;
+    palStore.pals = [];
+  });
+
+  it('shows Local DB beside Think and toggles its selected state', () => {
+    const {getByTestId, getByLabelText, rerender} = render(
+      <UserContext.Provider value={mockUser}>
+        <ChatInput
+          {...defaultProps}
+          showThinkingToggle
+          isThinkingEnabled={false}
+        />
+      </UserContext.Provider>,
+    );
+    expect(getByTestId('thinking-toggle')).toBeTruthy();
+    fireEvent.press(getByLabelText('Enable local database search'));
+    expect(uiStore.setLocalDbEnabled).toHaveBeenCalledWith(true);
+
+    uiStore.localDbEnabled = true;
+    rerender(
+      <UserContext.Provider value={mockUser}>
+        <ChatInput {...defaultProps} showThinkingToggle isThinkingEnabled />
+      </UserContext.Provider>,
+    );
+    fireEvent.press(getByLabelText('Disable local database search'));
+    expect(uiStore.setLocalDbEnabled).toHaveBeenCalledWith(false);
+  });
+
+  it('does not show Local DB in the video-only composer', () => {
+    (chatSessionStore as any).activePalId = 'video-pal';
+    palStore.pals = [{id: 'video-pal', capabilities: {video: true}}] as any;
+    const {queryByTestId} = render(
+      <UserContext.Provider value={mockUser}>
+        <ChatInput {...defaultProps} />
+      </UserContext.Provider>,
+    );
+    expect(queryByTestId('local-db-toggle')).toBeNull();
   });
 
   it('should not render thinking toggle when showThinkingToggle is false', () => {

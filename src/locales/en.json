@@ -658,6 +658,11 @@
     },
     "chatInput": {
       "inputPlaceholder": "Message",
+      "localDbToggle": {
+        "label": "Local DB",
+        "enable": "Enable local database search",
+        "disable": "Disable local database search"
+      },
       "thinkingToggle": {
         "enableThinking": "Enable thinking mode",
         "disableThinking": "Disable thinking mode",
@@ -1264,6 +1269,10 @@
   "chat": {
     "conversationReset": "Conversation reset!",
     "modelNotLoaded": "Model not loaded. Please initialize the model.",
+    "localDbSource": "Local DB source: {{title}}\n{{excerpt}}\n{{url}}",
+    "localDbNoResults": "Local DB: No readable matching article was found. Try rephrasing your question.",
+    "localDbUnavailable": "Local DB: Could not search or read Knowledge To Go. Check that it is running on this phone and try again.",
+    "localDbLocalOnly": "Local DB works with an on-device model. Load a local model or turn Local DB off.",
     "completionFailed": "Completion failed: ",
     "toolCallTruncated": "Tool call cut off — the model likely ran out of room. Try a larger context or a smaller request.",
     "speculativeInitFailed": "This device could not start speculative decoding for this model — most likely there is not enough memory for the draft context. Turn off Speculative decoding under Settings → Advanced Settings and try again.",

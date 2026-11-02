@@ -51,11 +51,53 @@ describe('Knowledge To Go search', () => {
         ),
       );
 
-    const context = await kiwixContext('Tell me about koalas');
-    expect(context).toContain('Koalas eat eucalyptus leaves.');
-    expect(context).toContain('http://127.0.0.1:8085/kiwix/content/wiki/Koala');
-    expect(context).toContain('untrusted data');
-    expect(context).not.toContain('ignore rules');
+    const result = await kiwixContext('Tell me about koalas');
+    expect(result?.excerpt).toContain('Koalas eat eucalyptus leaves.');
+    expect(result?.url).toBe('http://127.0.0.1:8085/kiwix/content/wiki/Koala');
+    expect(result?.context).toContain('untrusted data');
+    expect(result?.context).not.toContain('ignore rules');
+  });
+
+  it('finds the exact Lady Gaga article when a possessive apostrophe is omitted', async () => {
+    const related = `<rss><channel><item><title>Free Woman</title><link>/kiwix/content/wiki/Free_Woman</link><description>A song.</description></item></channel></rss>`;
+    const match = `<rss><channel><item><title>List of Lady Gaga songs</title><link>/kiwix/content/wiki/Songs</link><description>Songs.</description></item><item><title>Lady Gaga</title><link>/kiwix/content/wiki/Lady_Gaga</link><description>A singer.</description></item></channel></rss>`;
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(response(catalog))
+      .mockResolvedValueOnce(response(related))
+      .mockResolvedValueOnce(response(match))
+      .mockResolvedValueOnce(
+        response(
+          '<p>Stefani Joanne Angelina Germanotta, known professionally as Lady Gaga, is a singer.</p>',
+        ),
+      );
+
+    const result = await kiwixContext('What is Lady gagas real name?');
+    expect(result?.title).toBe('Lady Gaga');
+    expect(result?.excerpt).toContain('Stefani Joanne Angelina Germanotta');
+    expect(result?.context).toContain('do not make up an answer');
+    expect((global.fetch as jest.Mock).mock.calls[2][0]).toContain(
+      'pattern=lady%20gaga',
+    );
+  });
+
+  it('preserves real when it is part of an article title', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(response(catalog))
+      .mockResolvedValueOnce(response('<rss><channel></channel></rss>'));
+    await searchKiwix('What is Real Madrid?');
+    expect((global.fetch as jest.Mock).mock.calls[1][0]).toContain(
+      'pattern=real%20madrid',
+    );
+  });
+
+  it('does not produce a source when an article cannot be read', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(response(catalog))
+      .mockResolvedValueOnce(response(results))
+      .mockRejectedValueOnce(new Error('article unavailable'));
+    await expect(kiwixContext('koalas eat')).rejects.toThrow(
+      'article unavailable',
+    );
   });
 
   it('does not contact the library for greetings', async () => {

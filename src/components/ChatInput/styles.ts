@@ -54,6 +54,15 @@ export const createStyles = ({
     thinkingToggleLeftDisabled: {
       backgroundColor: 'transparent',
     },
+    localDbToggle: {
+      marginLeft: 0,
+      paddingHorizontal: 6,
+      flexShrink: 0,
+    },
+    localDbToggleText: {
+      fontSize: 12,
+      fontWeight: '500',
+    },
     thinkingToggleText: {
       flexShrink: 1,
       fontSize: 12,
