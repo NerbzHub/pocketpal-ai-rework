@@ -134,6 +134,8 @@ android {
             buildConfigField "boolean", "USE_DEV_SUPPORT", "true"
         }
         release {
+            // Keep this fork installable alongside the official PocketPal app.
+            applicationIdSuffix ".localdb"
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
             // Only use release signing config if credentials are available, otherwise use debug
@@ -157,6 +159,7 @@ android {
             //   3. matchingFallbacks so dependencies resolve to their release
             //      variant (they don't publish a releaseE2e variant).
             initWith release
+            applicationIdSuffix null
             debuggable true
             signingConfig signingConfigs.debug
             matchingFallbacks = ['release']

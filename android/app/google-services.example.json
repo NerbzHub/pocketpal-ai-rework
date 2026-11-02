@@ -12,6 +12,19 @@
           "current_key": "local-placeholder-not-a-real-api-key"
         }
       ]
+    },
+    {
+      "client_info": {
+        "android_client_info": {
+          "package_name": "com.pocketpalai.localdb"
+        },
+        "mobilesdk_app_id": "1:1234567890:android:0000000000000001"
+      },
+      "api_key": [
+        {
+          "current_key": "local-placeholder-not-a-real-api-key"
+        }
+      ]
     }
   ],
   "project_info": {

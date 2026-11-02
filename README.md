@@ -1,15 +1,15 @@
 # PocketPal with Local DB
 
-This is a personal fork of [PocketPal AI](https://github.com/a-ghorbani/pocketpal-ai) that can search offline Kiwix libraries provided by **Knowledge to Go** before answering a question. PocketPal runs the language model on the phone; Knowledge to Go supplies the downloaded articles. Both apps need to be on the same Android phone.
+This fork of [PocketPal AI](https://github.com/a-ghorbani/pocketpal-ai) can search offline Kiwix libraries provided by **Knowledge to Go** before answering a question. PocketPal runs the language model on the phone; Knowledge to Go supplies the downloaded articles. Both apps need to be on the same Android phone.
 
 ## What you need
 
 - An Android phone with a 64-bit ARM processor, Android 7.0 or later, and enough free storage and memory for a model and your libraries. The supplied test APK has been tested on a Samsung Galaxy S10+; other phones have not been tested.
 - Knowledge to Go installed, with one or more Kiwix libraries downloaded and its local Kiwix server running at `http://127.0.0.1:8085/kiwix` on the phone. This address is fixed in this fork.
-- The APK from this fork, shared separately or built from source using the instructions below. The official PocketPal store app does not contain this fork's Local DB feature. The APK contains the app, but not a model or Kiwix libraries.
+- The APK from this fork, available on the [releases page](https://github.com/NerbzHub/pocketpal-ai-rework/releases) when a release is published, or built from source using the instructions below. The official PocketPal store app does not contain this fork's Local DB feature. The APK contains the app, but not a model or Kiwix libraries.
 - A locally downloaded GGUF language model in PocketPal. Qwen3 0.6B was used for the Galaxy S10+ test.
 
-The APK provided with this personal build is a **debug-signed test build** with CPU inference and a bundled JavaScript app; it does not need a computer, USB debugging, or a Metro server to run. It uses a placeholder Firebase configuration, so Firebase-dependent online services are not configured. It has the application ID `com.pocketpalai`; if another PocketPal build with a different signing key is already installed, Android may refuse to install it as an update. Back up anything you need before removing an existing app, because uninstalling it removes its app data. Knowledge to Go is a separate app and can remain installed.
+The release APK uses CPU inference and bundles the JavaScript app; it does not need a computer, USB debugging, or a Metro server to run. It uses a placeholder Firebase configuration, so Firebase-dependent online services are not configured. Its application ID is `com.pocketpalai.localdb`, so it can be installed alongside Knowledge to Go and the official PocketPal app. The older debug test build uses a different application ID and keeps its own chats and models; installing the release does not transfer them.
 
 ## Install and set up
 
@@ -66,6 +66,8 @@ The following is for developers. Installing the APK does not require these tools
    ```
 
    On Windows, `gradlew.bat assembleProdDebug` also works from PowerShell. The output is `android/app/build/outputs/apk/prod/debug/app-prod-debug.apk`. Native builds can take a long time and need substantial free disk space. A source build may include different native inference backends and architectures from the supplied test APK.
+
+   To build a release APK, configure your own release keystore and `APP_RELEASE_STORE_PASSWORD` and `APP_RELEASE_KEY_PASSWORD`, then run `./gradlew assembleProdRelease`. Keep the keystore and passwords private and backed up: Android requires the same signing key to install future updates. The output is `android/app/build/outputs/apk/prod/release/app-prod-release.apk`. Without release credentials, the existing Gradle configuration falls back to the public debug key; do not distribute that as a signed release.
 
 For development checks, run `yarn lint`, `yarn typecheck`, and `yarn test` from the repository root. Changes to native code require rebuilding the app. See [CONTRIBUTING.md](CONTRIBUTING.md) and [e2e/README.md](e2e/README.md) for upstream development workflows.
 
