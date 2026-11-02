@@ -829,17 +829,26 @@ export const useChatSession = (
       }
       try {
         const hits = await searchLocalLibrary(query, lease.signal);
-        if (lease.signal.aborted) { return; }
-        if (!hits.length) {
-          await addSystemMessage('No matching library excerpts were found. Try shorter keywords.');
+        if (lease.signal.aborted) {
           return;
         }
-        const sources = hits.map((hit, index) =>
-          `[${index + 1}] ${hit.title}\n${hit.url}\n${hit.snippet}`,
-        ).join('\n\n');
-        await addSystemMessage(`Offline library sources:\n${hits.map((hit, index) =>
-          `[${index + 1}] ${hit.title}: ${hit.url}`,
-        ).join('\n')}`);
+        if (!hits.length) {
+          await addSystemMessage(
+            'No matching library excerpts were found. Try shorter keywords.',
+          );
+          return;
+        }
+        const sources = hits
+          .map(
+            (hit, index) =>
+              `[${index + 1}] ${hit.title}\n${hit.url}\n${hit.snippet}`,
+          )
+          .join('\n\n');
+        await addSystemMessage(
+          `Offline library sources:\n${hits
+            .map((hit, index) => `[${index + 1}] ${hit.title}: ${hit.url}`)
+            .join('\n')}`,
+        );
         completionMessage = {
           ...message,
           text: `Answer the question using only these retrieved excerpts. Cite source numbers. If they are insufficient, say so.\n\n${wrapUntrusted(sources)}\n\nQuestion: ${query}`,
@@ -847,7 +856,9 @@ export const useChatSession = (
       } catch (error) {
         if (!lease.signal.aborted) {
           const detail = error instanceof Error ? error.message : String(error);
-          await addSystemMessage(`Offline library search failed: ${detail} Make sure Knowledge to Go is running.`);
+          await addSystemMessage(
+            `Offline library search failed: ${detail} Make sure Knowledge to Go is running.`,
+          );
         }
         return;
       }

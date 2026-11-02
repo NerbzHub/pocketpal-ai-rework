@@ -13,11 +13,13 @@ describe('Knowledge to Go search', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it('only returns local search hits with excerpts', () => {
-    expect(parseSearchResults(xml)).toEqual([{
-      title: 'Bottled water',
-      url: 'http://127.0.0.1:8085/kiwix/content/wikipedia_en_top1m_maxi_2026-04/Bottled_water',
-      snippet: '... water . Bottled mineral water being poured into a glass',
-    }]);
+    expect(parseSearchResults(xml)).toEqual([
+      {
+        title: 'Bottled water',
+        url: 'http://127.0.0.1:8085/kiwix/content/wikipedia_en_top1m_maxi_2026-04/Bottled_water',
+        snippet: '... water . Bottled mineral water being poured into a glass',
+      },
+    ]);
   });
 
   it('rejects a response from an unexpected server', () => {
@@ -30,7 +32,9 @@ describe('Knowledge to Go search', () => {
       text: async () => xml,
     } as Response);
     await expect(searchLocalLibrary('water & safety')).resolves.toHaveLength(1);
-    expect(fetchMock.mock.calls[0][0]).toContain('pattern=water%20%26%20safety');
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      'pattern=water%20%26%20safety',
+    );
     expect(fetchMock.mock.calls[0][0]).toContain('127.0.0.1:8085/kiwix/search');
   });
 });
