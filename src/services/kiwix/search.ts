@@ -16,6 +16,7 @@ function decodeText(value: string): string {
     .replace(/&(amp|lt|gt|quot|apos);/g, (_, entity: string) =>
       ({amp: '&', lt: '<', gt: '>', quot: '"', apos: "'"}[entity] || ''),
     )
+    .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
