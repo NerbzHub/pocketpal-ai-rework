@@ -59,6 +59,7 @@ import {
   talentRegistry,
 } from '../services/talents';
 import type {ToolDefinition} from '../services/talents/types';
+import {kiwixContext} from '../services/search/kiwix';
 import {
   agentStateReducer,
   createTriggerMarkerCache,
@@ -84,6 +85,7 @@ const prepareCompletion = async ({
   l10n,
   currentMessages,
   spoken,
+  signal,
 }: {
   imageUris: string[];
   message: MessageType.PartialText;
@@ -95,6 +97,7 @@ const prepareCompletion = async ({
   l10n: any;
   currentMessages: MessageType.Any[];
   spoken: boolean;
+  signal: AbortSignal;
 }) => {
   const sessionCompletionSettings =
     await chatSessionStore.getCurrentCompletionSettings();
@@ -163,6 +166,26 @@ const prepareCompletion = async ({
     now: new Date(),
     maxToolTurns: DEFAULT_MAX_TURNS,
   });
+
+  // Knowledge To Go is local to this device. Ground ordinary chats as well as
+  // tool-capable Pals, so smaller models can use the downloaded library too.
+  if (modelStore.activeModel?.origin !== ModelOrigin.REMOTE) {
+    try {
+      const offlineContext = await kiwixContext(message.text, signal);
+      if (offlineContext && !signal.aborted) {
+        systemPromptFragments.push(offlineContext);
+      }
+    } catch {
+      if (
+        !signal.aborted &&
+        /\b(?:kiwix|knowledge\s+to\s+go)\b/i.test(message.text)
+      ) {
+        systemPromptFragments.push(
+          'The offline Knowledge To Go library is unavailable for this turn. If asked to search it, say it could not be reached.',
+        );
+      }
+    }
+  }
 
   const messages = assembleMessages(systemMessages, systemPromptFragments, [
     ...chatMessages,
@@ -827,6 +850,7 @@ export const useChatSession = (
       l10n,
       currentMessages,
       spoken: !!opts.spoken,
+      signal: lease.signal,
     });
 
     currentMessageInfo.current = messageInfo;

@@ -15,6 +15,7 @@ import {
 import {useChatSession} from '../useChatSession';
 import {isReadUrlAllowed} from '../../services/talents';
 import {bodyExtras} from '../../api/servers';
+import * as kiwix from '../../services/search/kiwix';
 
 import {
   chatSessionStore,
@@ -72,6 +73,31 @@ const applyChatTemplateSpy = jest
 describe('useChatSession', () => {
   beforeEach(() => {
     applyChatTemplateSpy.mockClear();
+  });
+
+  it('includes offline library context when preparing an on-device chat', async () => {
+    const lookup = jest
+      .spyOn(kiwix, 'kiwixContext')
+      .mockResolvedValueOnce('Offline article: koalas eat eucalyptus.');
+    let messages: any[] = [];
+    modelStore.setActiveModel(mockBasicModel.id);
+    modelStore.context!.completion = jest.fn().mockImplementation(params => {
+      messages = params.messages;
+      return Promise.resolve({timings: {total: 100}, usage: {}});
+    });
+
+    const {result} = renderHook(() =>
+      useChatSession({current: null}, textMessage.author, mockAssistant),
+    );
+    await act(async () => {
+      await result.current.handleSendPress(textMessage);
+    });
+
+    expect(lookup).toHaveBeenCalled();
+    expect(
+      messages.find(message => message.role === 'system')?.content,
+    ).toContain('Offline article: koalas eat eucalyptus.');
+    lookup.mockRestore();
   });
 
   it('should send a message and update the chat session', async () => {
