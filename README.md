@@ -1,348 +1,74 @@
-<div align="center">
+# PocketPal with Local DB
 
-<img src="src/assets/pocketpal-dark-v2.png" alt="PocketPal AI logo" width="120" />
+This is a personal fork of [PocketPal AI](https://github.com/a-ghorbani/pocketpal-ai) that can search offline Kiwix libraries provided by **Knowledge to Go** before answering a question. PocketPal runs the language model on the phone; Knowledge to Go supplies the downloaded articles. Both apps need to be on the same Android phone.
 
-# PocketPal AI
+## What you need
 
-**A private AI assistant that runs entirely on your phone.**
+- An Android phone with a 64-bit ARM processor, Android 7.0 or later, and enough free storage and memory for a model and your libraries. The supplied test APK has been tested on a Samsung Galaxy S10+; other phones have not been tested.
+- Knowledge to Go installed, with one or more Kiwix libraries downloaded and its local Kiwix server running at `http://127.0.0.1:8085/kiwix` on the phone. This address is fixed in this fork.
+- The APK from this fork, shared separately or built from source using the instructions below. The official PocketPal store app does not contain this fork's Local DB feature. The APK contains the app, but not a model or Kiwix libraries.
+- A locally downloaded GGUF language model in PocketPal. Qwen3 0.6B was used for the Galaxy S10+ test.
 
-Chat with language models, give them a voice, and let them use tools — all on-device. No account, no cloud, no internet required.
+The APK provided with this personal build is a **debug-signed test build** with CPU inference and a bundled JavaScript app; it does not need a computer, USB debugging, or a Metro server to run. It uses a placeholder Firebase configuration, so Firebase-dependent online services are not configured. It has the application ID `com.pocketpalai`; if another PocketPal build with a different signing key is already installed, Android may refuse to install it as an update. Back up anything you need before removing an existing app, because uninstalling it removes its app data. Knowledge to Go is a separate app and can remain installed.
 
-<a href="https://pocketpal.dev/"><strong>pocketpal.dev</strong></a> ·
-<a href="#get-the-app">Get the app</a> ·
-<a href="https://pocketpal.dev/leaderboard">Leaderboard</a> ·
-<a href="https://palshub.ai/">PalsHub</a> ·
-<a href="https://github.com/a-ghorbani/pocketpal-ai/discussions">Discussions</a>
+## Install and set up
 
-<br/>
+1. Copy the APK to the phone, open it from the phone's file manager, and follow Android's installation prompts. Android may ask you to allow installations from the app that opened the file.
+2. Open Knowledge to Go, download the libraries you want, and start its local Kiwix server. On the same phone, open `http://127.0.0.1:8085/kiwix` in a browser to check that it is reachable. Keep the server running while using Local DB.
+3. Open PocketPal. In the menu, choose **Models**, download a model that fits the phone, and tap **Load**. Downloads require an internet connection and enough space; a downloaded model can then run offline.
+4. Open a chat. Tap **Local DB** beside **Think** to select it, then ask a question. For example: `What is Lady Gaga's real name?`
+5. PocketPal displays the matched article title, an excerpt, and a local source URL, then gives the source text to the local model to generate an answer. Read the source as well as the answer: small models can misunderstand or invent details even when given the right article.
 
-[![App Store](https://img.shields.io/badge/App_Store-Download-0D96F6?logo=apple&logoColor=white)](https://apps.apple.com/us/app/pocketpal-ai/id6502579498)
-[![Google Play](https://img.shields.io/badge/Google_Play-Get_it-414141?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.pocketpalai)
+**Local DB** is off by default and its setting is remembered. Tap it again to return to ordinary chat. **Think** is a separate model option; it does not turn database search on or off.
 
-[![Latest release](https://img.shields.io/github/v/release/a-ghorbani/pocketpal-ai?sort=semver)](https://github.com/a-ghorbani/pocketpal-ai/releases)
-[![License: MIT](https://img.shields.io/github/license/a-ghorbani/pocketpal-ai)](LICENSE)
-[![Stars](https://img.shields.io/github/stars/a-ghorbani/pocketpal-ai)](https://github.com/a-ghorbani/pocketpal-ai/stargazers)
-[![Open issues](https://img.shields.io/github/issues/a-ghorbani/pocketpal-ai)](https://github.com/a-ghorbani/pocketpal-ai/issues)
-[![Sponsor](https://img.shields.io/github/sponsors/a-ghorbani?logo=githubsponsors)](https://github.com/sponsors/a-ghorbani)
+## How Local DB works and its limits
 
-</div>
+- Each message sent while Local DB is selected triggers a search of the server's full-text-indexed libraries. The app picks a matching article and provides a bounded excerpt to the model. It does not search arbitrary files directly, and collections without a full-text index are not searched.
+- If no readable matching article is found, or the server cannot be reached, the app reports that and does not generate an unsourced answer for that message. Try a shorter question naming the subject, and check the library is downloaded and indexed.
+- Local DB works only with an on-device model. It refuses to send the retrieved article to a remote model. Ordinary chat and other optional online features have their own settings and network behavior.
+- The search can choose the wrong article or miss relevant text. Its result is not a guarantee of accuracy or completeness; check the displayed source, especially for important decisions.
+- Once the model and libraries have been downloaded, the Local DB search and local model can work without internet access. Knowledge to Go's server must still be running on the same phone. `127.0.0.1` refers to that phone, not another computer or phone.
 
----
+## Troubleshooting
 
-## Why PocketPal AI?
+- **Cannot search or read Knowledge to Go:** open the local server address above on the phone; start or restart the server and check that the library is downloaded. Android may stop background apps, so reopen Knowledge to Go if needed.
+- **No matching article:** check that the library has a full-text index; try the article name or rephrase the question. A downloaded collection is not necessarily searchable by this feature.
+- **A source appears but the answer is wrong:** read the excerpt or open the source URL. Try a more capable local model if the phone can run one.
+- **Model not loaded or remote model warning:** load a downloaded, on-device model in **Models**.
+- **APK will not install:** check the phone uses 64-bit ARM and Android 7 or newer, has enough free space, and allows installation from your file manager. A differently signed app with the same package name can also block installation.
 
-Most AI apps are a thin window onto someone else's server — every message you type gets shipped off, logged, and analyzed somewhere you can't see. PocketPal flips that around: **the AI lives on your phone, and your conversations stay on it unless you choose an online feature.**
+## Build from source
 
-- **🔒 Private by default** — every prompt, response, and document stays on your device unless you turn on an online feature such as web search or a remote server.
-- **✈️ Works offline** — download a model once and it just works, with no connection and no account. On a plane, on a trail, anywhere.
-- **📱 Runs on hardware you already own** — real language models, voices, and tools, tuned to make the most of your phone's CPU, GPU, and NPU.
-- **🆓 Free and open source** — chat, models, voices and tools are free, with no account. The store builds offer an optional one-time **PocketPal Plus** purchase for hands-free voice; builds from source include it. MIT-licensed.
+The following is for developers. Installing the APK does not require these tools.
 
-> **Privacy note:** Your chats and documents leave your device only through features you turn on: web search and page reading, a remote server, or a system voice your phone runs online. The app's other network use (model and voice downloads, PalsHub and purchases, device-compatibility rules from the jsDelivr CDN at launch, the opt-in benchmark leaderboard, and feedback or reports you submit) never attaches your chats.
+1. Install Git, [Android Studio and its Android SDK](https://developer.android.com/studio), the SDK build tools, NDK and CMake, Node.js matching [`.nvmrc`](.nvmrc), and Yarn Classic 1.22.22. This project requests Android SDK/build tools 37 and NDK 27.3.13750724; Gradle may request additional SDK components. Set `ANDROID_HOME` to your SDK directory and `JAVA_HOME` to a compatible JDK, such as Android Studio's bundled JDK.
+2. Clone this fork and install dependencies. On Windows, run the shell commands in Git Bash; the post-install script requires Bash and downloads OpenCL headers.
 
-## Contents
+   ```bash
+   git clone --branch codex/kiwix-offline-search https://github.com/NerbzHub/pocketpal-ai-rework.git
+   cd pocketpal-ai-rework
+   yarn install
+   ```
 
-- [Features](#features)
-- [Get the app](#get-the-app)
-- [How it works](#how-it-works)
-- [Using the app](#using-the-app)
-- [For developers](#for-developers)
-- [Contributing](#contributing)
-- [Roadmap](#roadmap)
-- [Community & support](#community--support)
-- [License](#license)
+3. The Android Google Services plugin needs `android/app/google-services.json`. For a local-only test build, if you do not already have a real configuration, copy the included placeholder:
 
-## Features
+   ```bash
+   cp -n android/app/google-services.example.json android/app/google-services.json
+   ```
 
-- **🧠 On-device chat** — run GGUF language models (Gemma, Qwen, Phi, Llama, and more) fully offline.
-- **🗣️ Text-to-speech** — give your assistant a voice with on-device neural voices (Kokoro, Kitten, Supertonic, and Phonon on supported devices) that synthesize speech on your phone, or your phone's system voices.
-- **🎙️ Voice input** — dictate messages with on-device Whisper speech recognition (whisper.cpp).
-- **🎭 Pals** — create personalized assistants with their own model, system prompt, and personality (Assistant and Roleplay types).
-- **🛍️ [PalsHub](https://palshub.ai/)** — discover and install community Pals, including premium ones via in-app purchase.
-- **✨ PocketPal Plus** — an optional one-time purchase in the App Store and Google Play builds that adds hands-free voice conversation. Builds from source include every Plus feature.
-- **🛠️ Talents & tools** — let capable Pals call built-in tools (calculator, date/time, rich HTML rendering, opt-in web search and page reading) inside a tool-use loop.
-- **📥 Hugging Face integration** — search and download GGUF models, including gated ones, directly from the HF Hub with your access token.
-- **📊 Benchmarking** — measure tokens/sec and memory, and optionally compare on the [AI Phone Leaderboard](https://pocketpal.dev/leaderboard).
-- **⚡ Hardware acceleration** — CPU, GPU (Metal on iOS, OpenCL/Adreno on Android), and NPU (Qualcomm Hexagon) inference paths, with graceful fallback.
-- **🌍 Localized** — available in 16 languages, on phones and tablets, including full iPad support.
+   The example contains no working credentials; Firebase-dependent features require a real project configuration. Do not overwrite an existing configuration. The real `google-services.json` is ignored by Git.
 
-## Get the app
+4. Build the bundled, debug-signed APK:
 
-| Platform | |
-| --- | --- |
-| **iOS / iPadOS** | [![Download on the App Store](https://img.shields.io/badge/App_Store-Download-0D96F6?logo=apple&logoColor=white)](https://apps.apple.com/us/app/pocketpal-ai/id6502579498) |
-| **Android** | [![Get it on Google Play](https://img.shields.io/badge/Google_Play-Get_it-414141?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.pocketpalai) |
+   ```bash
+   cd android
+   ./gradlew assembleProdDebug
+   ```
 
-**Three steps to your first chat:**
+   On Windows, `gradlew.bat assembleProdDebug` also works from PowerShell. The output is `android/app/build/outputs/apk/prod/debug/app-prod-debug.apk`. Native builds can take a long time and need substantial free disk space. A source build may include different native inference backends and architectures from the supplied test APK.
 
-1. **Install** PocketPal from the App Store or Google Play.
-2. **Download a model** — tap the menu (☰) → **Models**, pick one that fits your phone, and download (or add one from Hugging Face).
-3. **Load it and start chatting** — that's it, you're running AI fully offline.
+For development checks, run `yarn lint`, `yarn typecheck`, and `yarn test` from the repository root. Changes to native code require rebuilding the app. See [CONTRIBUTING.md](CONTRIBUTING.md) and [e2e/README.md](e2e/README.md) for upstream development workflows.
 
-## How it works
+## Credits and license
 
-You don't need to know any of this to use PocketPal — but if you're curious how a phone runs real AI offline, here's the short version.
-
-PocketPal is a four-layer stack, from the silicon up to the chat UI. Each layer has one job, and the dependency direction is strictly top-down — the JS app talks to native bridges, bridges talk to inference engines, engines target hardware backends.
-
-<div align="center">
-  <img src="assets/images and logos/stack-diagram-dark.png" alt="PocketPal AI on-device stack — UI & Tool Use → Bridging → Engine → Hardware" width="100%">
-</div>
-
-| Layer | What runs here |
-| --- | --- |
-| **UI & Tool Use** | The React Native app (UI via React Native Paper, state via MobX, chat history in WatermelonDB). The **`AgentRunner`** drives each chat turn — streaming tokens, dispatching **Talents** (tools) when the model calls them, and feeding results back for follow-up reasoning. **Pals** are configurable personas; **PalsHub** is the in-app marketplace for sharing and buying them. In **voice mode**, your speech is transcribed, answered as a normal chat turn, and the reply is spoken back. |
-| **Bridging** | Native modules that connect JavaScript to the engines. [`llama.rn`](https://github.com/mybigday/llama.rn) bridges LLM inference over JSI; [`whisper.rn`](https://github.com/mybigday/whisper.rn) bridges speech recognition; [`@pocketpalai/react-native-speech`](https://github.com/a-ghorbani/react-native-speech) and `onnxruntime-react-native` bridge text-to-speech, with the `@pocketpalai/react-native-speech-phonon` add-on for Phonon. |
-| **Engine** | The inference engines. **llama.cpp** runs language models in the quantized **GGUF** format. **whisper.cpp** runs Whisper speech recognition models in the **GGML** format. **ONNX Runtime** runs the Kokoro, Kitten and Supertonic voice models in the **ONNX** format. **Phonon** runs natively in its own Rust runtime: a GGUF model on the CPU on Android, a Core ML model on iOS. |
-| **Hardware** | Where the math actually happens. PocketPal targets **CPU** (universal fallback), **GPU** (Metal on iOS, OpenCL on Qualcomm Adreno for Android), and **NPU** (Qualcomm Hexagon, and the Apple Neural Engine for Phonon on iOS) — falling back gracefully and offloading partial layers when a full backend isn't available. |
-
-## Using the app
-
-<details>
-<summary><strong>📥 Download & load a model</strong></summary>
-
-<br/>
-
-1. Open the app and tap the **Menu** (☰), then go to **Models**.
-2. Pick a model from the list and tap **Download**, or tap **+** to add one from Hugging Face or local storage.
-3. From Hugging Face, search GGUF models and choose a quantization that fits your device's memory and storage — download now or bookmark for later.
-4. After downloading, tap **Load** (or use the chevron icon left of the chat input to load right from the chat screen).
-
-<img src="assets/images and logos/Download_models.png" alt="Download Models" width="100%">
-</details>
-
-<details>
-<summary><strong>💬 Chat</strong></summary>
-
-<br/>
-
-1. Make sure a model is loaded.
-2. Open the **Chat** page and start talking.
-3. The screen stays awake during inference and deactivates when idle.
-4. **Copy** a full response with the copy icon, or long-press a paragraph to copy just that.
-5. **Edit** any of your messages with a long-press — the AI regenerates from your change. Hit **retry** for a fresh answer, optionally with a different model.
-
-<img src="assets/images and logos/Chat.png" alt="Chat" width="83%">
-</details>
-
-<details>
-<summary><strong>🎭 Pals & PalsHub</strong></summary>
-
-<br/>
-
-Create personalized assistants:
-- **Assistant Pal** — pick a default model, set a system prompt (write it yourself or have the app generate one), and customize the chat input color.
-- **Roleplay Pal** — everything above, plus location, the AI's role, and other contextual parameters.
-
-Switch personas with the Pal picker on the chat page. Browse **[PalsHub](https://palshub.ai/)** in-app to discover community Pals, including premium ones via in-app purchase.
-
-<img src="assets/images and logos/Pals.png" alt="Assistant Pal" width="100%">
-<p><em>Creating a cocktail-recipe assistant</em></p>
-</details>
-
-<details>
-<summary><strong>📊 Benchmark your device</strong></summary>
-
-<br/>
-
-1. Open the **Benchmark** page.
-2. Run performance tests to compare speed and efficiency across models.
-3. Review tokens/sec and memory usage.
-4. Optionally share your results to the [AI Phone Leaderboard](https://pocketpal.dev/leaderboard).
-
-<img src="assets/images and logos/Benchmark.png" alt="Benchmark" width="100%">
-</details>
-
-<details>
-<summary><strong>🔑 Set up a Hugging Face token (for gated models)</strong></summary>
-
-<br/>
-
-1. Create an access token in your Hugging Face account ([docs](https://huggingface.co/docs/hub/en/security-tokens)).
-2. In PocketPal, go to **Settings → Set Token**, paste it, and save.
-
-<img src="assets/images and logos/Token_in_pocketpal.png" alt="Token setup" width="66%">
-</details>
-
-<details>
-<summary><strong>💌 Send feedback</strong></summary>
-
-<br/>
-
-Go to **App Info → "Sharing your thoughts"**, type your feedback — feature requests, suggestions, anything — and submit.
-
-<img src="assets/images and logos/Send_Feedback.png" alt="Send feedback" width="50%">
-</details>
-
-## For developers
-
-PocketPal is a standard React Native app. If you can build a React Native project, you can build PocketPal.
-
-### Prerequisites
-
-- **Node.js** — version is pinned in [`.nvmrc`](.nvmrc) (currently `22.21.0`); run `nvm use` to match it. Older Node will fail the `engines` check.
-- **Yarn 1 (Classic)** — `packageManager` is pinned to `yarn@1.22.22`.
-- **Xcode** + **CocoaPods**, and **Ruby + Bundler** (for iOS / Fastlane tooling).
-  - Xcode 26.6 or later, with the Metal Toolchain: `xcodebuild -downloadComponent MetalToolchain`.
-  - The iOS simulator build needs an Apple silicon Mac.
-  - After a change to `patches/llama.rn+*.patch`, remove `node_modules/llama.rn` and run `yarn --check-files` so the patch applies to fresh sources.
-- **Android Studio** + Android SDK/NDK.
-
-See the [React Native environment setup](https://reactnative.dev/docs/set-up-your-environment) for platform details.
-
-### Clone, install & run
-
-```bash
-git clone https://github.com/a-ghorbani/pocketpal-ai
-cd pocketpal-ai
-
-nvm use                       # match the pinned Node version
-yarn install                  # install JS dependencies
-(cd ios && pod install)       # iOS only
-
-yarn start                    # Metro bundler
-yarn ios                      # build + run on iOS simulator
-yarn android                  # build + run on Android emulator
-```
-
-Core on-device chat works without any backend keys; only PalsHub/auth features need additional configuration.
-
-> **Native-change rule:** if you change `package.json`, a native module, `ios/`, `android/`, the Podfile, or `build.gradle`, re-run `pod install` and rebuild both platforms — a JS reload won't pick up native changes.
-
-### Quality gates
-
-```bash
-yarn lint           # ESLint
-yarn typecheck      # tsc --noEmit
-yarn test           # Jest
-yarn l10n:validate  # validate locale JSON (placeholders, integrity)
-yarn test:perf      # render-performance tests (Reassure)
-yarn test:perf:compare [base]  # render counts of HEAD vs. base (default: merge-base with origin/main)
-```
-
-Run `yarn lint && yarn typecheck && yarn test` before opening a PR. Pull requests also run the render-count comparison; see [render-performance tests](docs/render-perf-tests.md). Commits are validated by Commitlint ([Conventional Commits](https://www.conventionalcommits.org/)) via a Husky hook.
-
-<details>
-<summary><strong>Repository layout</strong></summary>
-
-<br/>
-
-```
-src/
-├── screens/        # Chat, Models, Pals, Benchmark, Settings, Plus, About, …
-├── components/     # Reusable UI
-├── store/          # MobX stores (Model, ChatSession, Pal, TTS, ASR, VoiceMode, HF, Benchmark, …)
-├── services/
-│   ├── agent/      # AgentRunner — the chat / tool loop
-│   ├── talents/    # Tool engines + registries
-│   ├── search/     # Web search providers for the search talents
-│   ├── tts/        # TTS engines (kokoro, kitten, supertonic, phonon, system)
-│   ├── asr/        # Whisper speech recognition (dictation and voice mode)
-│   ├── voice/      # Hands-free voice mode
-│   ├── plus/       # Plus feature catalog and gate
-│   ├── iap/        # In-app purchases (store bridge)
-│   ├── palshub/    # PalsHub marketplace integration
-│   ├── deviceRules/ # Device-compatibility rules: parse, classify, launch-time fetch
-│   └── downloads/  # Model download manager
-├── database/       # WatermelonDB schema, models, migrations
-├── repositories/   # Data-access layer over the DB
-├── locales/        # i18n JSON + lazy loader (index.ts is the registry)
-└── hooks/  api/  theme/  utils/  config/  specs/
-```
-</details>
-
-<details>
-<summary><strong>Tech stack</strong></summary>
-
-<br/>
-
-Versions are pinned in [`package.json`](package.json); the highlights:
-
-| Area | Choice |
-| --- | --- |
-| Framework | React Native `0.87.1`, React `19.2.3` (New Architecture) |
-| Language | TypeScript `5.9.3` |
-| UI | React Native Paper `5.15.3`, React Navigation |
-| State | MobX `6` (`mobx`, `mobx-react`, `mobx-persist-store`) |
-| Persistence | WatermelonDB (chat history), AsyncStorage (settings), Keychain (secrets) |
-| LLM | `llama.rn` `0.13.0-rc.9` → llama.cpp b11960 · GGUF |
-| ASR | `whisper.rn` `0.7.4` → whisper.cpp · GGML; mic via `@fugood/react-native-audio-pcm-stream` `1.1.4` |
-| TTS | `@pocketpalai/react-native-speech` `2.8.2` + `onnxruntime-react-native` `^1.23.2` · ONNX; `@pocketpalai/react-native-speech-phonon` `0.1.3` |
-| Tooling | Yarn 1 (Classic), ESLint, Prettier, Jest, Husky + Commitlint |
-
-</details>
-
-<details>
-<summary><strong>Extending PocketPal</strong></summary>
-
-<br/>
-
-A **Talent** is a tool the model can call mid-conversation. Engines are registered in a `TalentRegistry`, exposed to the model as tool schemas; the `AgentRunner` detects a call, runs the engine, and returns the result for the next turn.
-
-| Talent | Engine | Does |
-| --- | --- | --- |
-| `calculate` | `CalculateEngine` | Arithmetic / expression evaluation |
-| `datetime` | `DatetimeEngine` | Current date / time |
-| `render_html` | `RenderHtmlEngine` | Renders model-produced HTML in chat |
-| `web_search` | `WebSearchEngine` | Searches the web (opt-in; needs a configured provider) |
-| `read_url` | `ReadUrlEngine` | Reads a web page from search results, a site you named, or a link on a page it read (opt-in; needs a configured provider) |
-
-Good first contributions:
-- A new **Talent** — implement a `TalentEngine` and register it in `src/services/talents/`.
-- A new **TTS engine** — model it on an existing engine in `src/services/tts/engines/`, register it in `engineRegistry.ts`, wire it into `TTSStore`, then search `src/` for that engine's name, ignoring case, to find every other entry it needs, such as its type, constants, setup-sheet entries and strings.
-- A new **locale** — translate on [Weblate](https://hosted.weblate.org/projects/pocketpal-ai/); registering a new language in the app follows the steps in `src/locales/index.ts`.
-
-</details>
-
-## Contributing
-
-Contributions are welcome — bug reports, fixes, features, translations, and docs all help.
-
-1. Fork and branch: `git checkout -b feature/your-feature-name`
-2. Make your changes; run on a device/emulator (`yarn ios` / `yarn android`). Re-run `pod install` + rebuild if you touched native code.
-3. Gate locally: `yarn lint && yarn typecheck && yarn test`
-4. Commit with [Conventional Commits](https://www.conventionalcommits.org/): `git commit -m "feat: add new talent"`
-5. Push and open a pull request.
-
-Please read the [Contributing Guidelines](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) first. Want to translate PocketPal into your language? Join us on [Weblate](https://hosted.weblate.org/projects/pocketpal-ai/).
-
-## Roadmap
-
-- **Tool use expansion** — grow the Talents catalog and deepen the agentic loop so Pals can do more, fully on-device.
-
-Have an idea or found a bug? [Open an issue](https://github.com/a-ghorbani/pocketpal-ai/issues/new/choose) or start a [discussion](https://github.com/a-ghorbani/pocketpal-ai/discussions).
-
-## Community & support
-
-- 💬 **Questions & ideas** — [GitHub Discussions](https://github.com/a-ghorbani/pocketpal-ai/discussions)
-- 🐛 **Bugs & requests** — [GitHub Issues](https://github.com/a-ghorbani/pocketpal-ai/issues/new/choose)
-- 🌐 **Website** — [pocketpal.dev](https://pocketpal.dev/)
-- ❤️ **Support development** — PocketPal is free and ad-free; [sponsoring](https://github.com/sponsors/a-ghorbani) helps keep it that way.
-
-## License
-
-Licensed under the [MIT License](LICENSE).
-
-## Acknowledgements
-
-PocketPal AI stands on the shoulders of the open-source community, including:
-
-- **[llama.cpp](https://github.com/ggml-org/llama.cpp)** — efficient on-device LLM inference.
-- **[llama.rn](https://github.com/mybigday/llama.rn)** — llama.cpp bindings for React Native.
-- **[whisper.cpp](https://github.com/ggml-org/whisper.cpp)** — on-device speech recognition.
-- **[whisper.rn](https://github.com/mybigday/whisper.rn)** — whisper.cpp bindings for React Native.
-- **[@pocketpalai/react-native-speech](https://github.com/a-ghorbani/react-native-speech)** — React Native TTS bridge powering on-device voices.
-- **[Phonon](https://github.com/gradium-ai/xn-ptts)** by Gradium — on-device TTS model, built on Kyutai's Pocket TTS and Mimi.
-- **[ONNX Runtime](https://onnxruntime.ai/)** — cross-platform inference engine powering on-device TTS.
-- **[React Native](https://reactnative.dev/)**, **[MobX](https://mobx.js.org/)**, **[React Native Paper](https://callstack.github.io/react-native-paper/)**, **[React Navigation](https://reactnavigation.org/)**, **[WatermelonDB](https://github.com/Nozbe/WatermelonDB)**, and many other open-source libraries that make this project possible.
-
-<div align="center">
-<br/>
-
-Made with ❤️ for people who want AI that stays on their phone.
-
-<br/>
-
-<sub>If PocketPal is useful to you, consider giving it a ⭐ — it helps others find the project.</sub>
-
-</div>
+This fork builds on [PocketPal AI](https://github.com/a-ghorbani/pocketpal-ai), [Kiwix](https://kiwix.org/), and their open-source dependencies. PocketPal AI is licensed under the [MIT License](LICENSE).
